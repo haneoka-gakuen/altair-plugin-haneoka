@@ -53,7 +53,7 @@ jobs:
         run: node scripts/verify-release-tag.mjs
       - name: Install dependencies
         working-directory: altair-plugin-haneoka
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
       - name: Build dependency chain
         working-directory: altair-plugin-haneoka
         run: |
