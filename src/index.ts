@@ -1,31 +1,20 @@
-import {
-  defineAltairPlugin,
-  defineAltairService,
-} from "@haneoka/altair/plugins";
+import { defineAltairPlugin, defineAltairService } from "@haneoka/altair/plugins";
 import type { ResourceBrowserProvider } from "@haneoka/altair/resource-browser";
-import {
-  createHaneokaResourceBrowserProvider,
-  type HaneokaResourceBrowserAdapter,
-} from "./resource-browser.js";
+import { createHaneokaResourceBrowserProvider, type HaneokaResourceBrowserAdapter } from "./resource-browser.js";
 
 export const ALTAIR_HANEOKA_PLUGIN_ID = "haneoka.altair-haneoka" as const;
-export const ALTAIR_HANEOKA_RESOURCE_BROWSER =
-  defineAltairService<ResourceBrowserProvider>(
-    "haneoka.altair.haneoka.resources",
-  );
+export const ALTAIR_HANEOKA_RESOURCE_BROWSER = defineAltairService<ResourceBrowserProvider>(
+  "haneoka.altair.haneoka.resources",
+);
 
 export interface AltairHaneokaPluginOptions {
   readonly adapter: HaneokaResourceBrowserAdapter;
   readonly defaultRelease?: string;
 }
 
-export const createAltairHaneokaPlugin = (
-  options: AltairHaneokaPluginOptions,
-) => {
+export const createAltairHaneokaPlugin = (options: AltairHaneokaPluginOptions) => {
   const browser = createHaneokaResourceBrowserProvider(options.adapter, {
-    ...(options.defaultRelease
-      ? { defaultRelease: options.defaultRelease }
-      : {}),
+    ...(options.defaultRelease ? { defaultRelease: options.defaultRelease } : {}),
   });
   return defineAltairPlugin({
     manifest: {
@@ -33,8 +22,7 @@ export const createAltairHaneokaPlugin = (
       name: "Altair Haneoka",
       version: "0.1.0",
       apiVersion: 2,
-      description:
-        "Haneoka catalogs, resources, and canonical ADV project import for Altair",
+      description: "Haneoka catalogs, resources, and canonical ADV project import for Altair",
       dependencies: {
         "haneoka.altair-adv": "^0.1.0",
       },
@@ -49,9 +37,7 @@ export const createAltairHaneokaPlugin = (
 
 const unavailableAdapter: HaneokaResourceBrowserAdapter = Object.freeze({
   async fetchCatalog() {
-    throw new ReferenceError(
-      "Haneoka catalog transport has not been configured by the Altair host",
-    );
+    throw new ReferenceError("Haneoka catalog transport has not been configured by the Altair host");
   },
 });
 

@@ -6,12 +6,7 @@ import type {
   ResourceBrowserProvider,
   ResourceBrowserRequest,
 } from "@haneoka/altair/resource-browser";
-import {
-  cloneStoryValue,
-  type JsonObject,
-  type StoryProject,
-  type StoryProjectCommand,
-} from "@haneoka/altair/model";
+import { cloneStoryValue, type JsonObject, type StoryProject, type StoryProjectCommand } from "@haneoka/altair/model";
 import {
   assertValidStoryProject,
   importAdvStoryJson,
@@ -19,11 +14,9 @@ import {
   type StoryDiagnostic,
 } from "@haneoka/altair-plugin-adv";
 
-export type HaneokaVisualResourceKind =
-  "background" | "still" | "frame" | "effect" | "post-effect" | "video";
+export type HaneokaVisualResourceKind = "background" | "still" | "frame" | "effect" | "post-effect" | "video";
 export type HaneokaAudioUsage = "bgm" | "se" | "voice";
-export type HaneokaPreferredResourceKind =
-  HaneokaVisualResourceKind | "live2d" | "audio";
+export type HaneokaPreferredResourceKind = HaneokaVisualResourceKind | "live2d" | "audio";
 
 export interface HaneokaCatalogRequest {
   readonly release: string;
@@ -49,8 +42,7 @@ export interface HaneokaResourceBrowserAdapter {
   readonly localize?: (value: unknown) => string;
 }
 
-export type HaneokaResourceMediaKind =
-  "image" | "audio" | "video" | "data" | "live2d" | "story" | "effect";
+export type HaneokaResourceMediaKind = "image" | "audio" | "video" | "data" | "live2d" | "story" | "effect";
 
 export interface HaneokaResourcePreview {
   readonly kind: "image" | "audio" | "video";
@@ -78,8 +70,7 @@ export interface HaneokaResourceFileNode extends HaneokaResourceNodeBase {
   readonly insert: HaneokaResourceInsertDescriptor;
 }
 
-export type HaneokaResourceNode =
-  HaneokaResourceDirectoryNode | HaneokaResourceFileNode;
+export type HaneokaResourceNode = HaneokaResourceDirectoryNode | HaneokaResourceFileNode;
 
 export type HaneokaResourceInsertDescriptor =
   | { readonly kind: "live2d"; readonly key: string }
@@ -150,15 +141,9 @@ export interface AltairHaneokaResourceBrowser {
     readonly preferredKind?: HaneokaPreferredResourceKind;
     readonly preferredAudioUsage?: HaneokaAudioUsage;
   }): readonly string[];
-  browse(
-    request: HaneokaResourceBrowseRequest,
-  ): Promise<HaneokaResourceBrowseResult>;
-  list(
-    request: HaneokaResourceBrowseRequest,
-  ): Promise<HaneokaResourceBrowseResult>;
-  resolveInsert(
-    request: HaneokaResourceResolveRequest,
-  ): Promise<HaneokaResourceInsert | undefined>;
+  browse(request: HaneokaResourceBrowseRequest): Promise<HaneokaResourceBrowseResult>;
+  list(request: HaneokaResourceBrowseRequest): Promise<HaneokaResourceBrowseResult>;
+  resolveInsert(request: HaneokaResourceResolveRequest): Promise<HaneokaResourceInsert | undefined>;
 }
 
 export interface HaneokaResourceBrowserProviderOptions {
@@ -172,11 +157,10 @@ export interface HaneokaResourceBrowserProviderOptions {
  * archive has one Japanese release; other languages must use an explicit
  * release or the provider's configured default.
  */
-export const HANEOKA_RELEASE_BY_LANGUAGE: Readonly<Record<string, string>> =
-  Object.freeze({
-    ja: "jp-cbt",
-    jp: "jp-cbt",
-  });
+export const HANEOKA_RELEASE_BY_LANGUAGE: Readonly<Record<string, string>> = Object.freeze({
+  ja: "jp-cbt",
+  jp: "jp-cbt",
+});
 
 const nonEmptyString = (value: unknown): string | undefined => {
   if (typeof value !== "string") return undefined;
@@ -184,13 +168,8 @@ const nonEmptyString = (value: unknown): string | undefined => {
   return normalized || undefined;
 };
 
-export const haneokaReleaseForLocale = (
-  locale: unknown,
-): string | undefined => {
-  const language = nonEmptyString(locale)
-    ?.replaceAll("_", "-")
-    .split("-", 1)[0]
-    ?.toLowerCase();
+export const haneokaReleaseForLocale = (locale: unknown): string | undefined => {
+  const language = nonEmptyString(locale)?.replaceAll("_", "-").split("-", 1)[0]?.toLowerCase();
   return language ? HANEOKA_RELEASE_BY_LANGUAGE[language] : undefined;
 };
 
@@ -203,14 +182,8 @@ export interface ResolveHaneokaReleaseOptions {
   readonly defaultRelease?: unknown;
 }
 
-export const resolveHaneokaRelease = ({
-  release,
-  locale,
-  defaultRelease,
-}: ResolveHaneokaReleaseOptions = {}): string | undefined =>
-  nonEmptyString(release) ??
-  haneokaReleaseForLocale(locale) ??
-  nonEmptyString(defaultRelease);
+export const resolveHaneokaRelease = ({ release, locale, defaultRelease }: ResolveHaneokaReleaseOptions = {}):
+  string | undefined => nonEmptyString(release) ?? haneokaReleaseForLocale(locale) ?? nonEmptyString(defaultRelease);
 
 interface AudioItem {
   readonly key: string;
@@ -226,12 +199,7 @@ const neverAborted = new AbortController().signal;
 const ADV_ROOT = ["Assets", "AddressableResources", "Adv"] as const;
 const STAGE_ROOT = [...ADV_ROOT, "Stage"] as const;
 const POST_EFFECT_ROOT = [...STAGE_ROOT, "_settings", "posteffect"] as const;
-const LIVE2D_ROOT = [
-  "Assets",
-  "AddressableResources",
-  "Character",
-  "Live2D",
-] as const;
+const LIVE2D_ROOT = ["Assets", "AddressableResources", "Character", "Live2D"] as const;
 const STATIC_PATHS: readonly (readonly string[])[] = Object.freeze([
   ["Assets"],
   ["audio"],
@@ -256,8 +224,7 @@ const STATIC_PATHS: readonly (readonly string[])[] = Object.freeze([
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
-const record = (value: unknown): Record<string, unknown> =>
-  isRecord(value) ? value : {};
+const record = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
 
 const pathKey = (path: readonly string[]): string => path.join("/");
 
@@ -280,22 +247,13 @@ const mediaExtension = (url: unknown, fallback: string): string =>
     ?.match(/\.[a-z0-9]{2,5}$/iu)?.[0]
     ?.toLocaleLowerCase() || fallback;
 
-const withFallbackFile = (
-  segments: readonly string[],
-  fallback: string,
-): string[] => {
+const withFallbackFile = (segments: readonly string[], fallback: string): string[] => {
   if (!segments.length) return [fallback];
-  return segments.at(-1)?.includes(".")
-    ? [...segments]
-    : [...segments, fallback];
+  return segments.at(-1)?.includes(".") ? [...segments] : [...segments, fallback];
 };
 
-const pathStartsWith = (
-  path: readonly string[],
-  prefix: readonly string[],
-): boolean =>
-  prefix.length <= path.length &&
-  prefix.every((part, index) => path[index] === part);
+const pathStartsWith = (path: readonly string[], prefix: readonly string[]): boolean =>
+  prefix.length <= path.length && prefix.every((part, index) => path[index] === part);
 
 const immediateChildren = (
   current: readonly string[],
@@ -304,11 +262,7 @@ const immediateChildren = (
 ): readonly HaneokaResourceNode[] => {
   const children = new Map<string, HaneokaResourceNode>();
   for (const path of STATIC_PATHS) {
-    if (
-      path.length !== current.length + 1 ||
-      !current.every((part, index) => path[index] === part)
-    )
-      continue;
+    if (path.length !== current.length + 1 || !current.every((part, index) => path[index] === part)) continue;
     const id = `haneoka:directory:${pathKey(path)}`;
     const description = directoryLabels.get(pathKey(path));
     children.set(id, {
@@ -320,11 +274,7 @@ const immediateChildren = (
     });
   }
   for (const node of nodes) {
-    if (
-      !current.every((part, index) => node.path[index] === part) ||
-      node.path.length <= current.length
-    )
-      continue;
+    if (!current.every((part, index) => node.path[index] === part) || node.path.length <= current.length) continue;
     const remaining = node.path.slice(current.length);
     if (remaining.length === 1) {
       children.set(node.id, node);
@@ -346,26 +296,17 @@ const immediateChildren = (
 
 const assertActive = (signal: AbortSignal): void => {
   if (signal.aborted) {
-    throw (
-      signal.reason ??
-      new DOMException("Haneoka resource operation aborted", "AbortError")
-    );
+    throw signal.reason ?? new DOMException("Haneoka resource operation aborted", "AbortError");
   }
 };
 
 const visualAvailable = (item: Record<string, unknown>): boolean => {
   const resolution = record(item.resolution);
   const status = String(resolution.status ?? "");
-  return (
-    item.runtimeAvailable !== false &&
-    !["missing", "unavailable"].includes(status)
-  );
+  return item.runtimeAvailable !== false && !["missing", "unavailable"].includes(status);
 };
 
-const visualFile = (
-  item: Record<string, unknown>,
-  visualKind: HaneokaVisualResourceKind,
-): HaneokaResourceFileNode => {
+const visualFile = (item: Record<string, unknown>, visualKind: HaneokaVisualResourceKind): HaneokaResourceFileNode => {
   const fallbackRoots: Record<HaneokaVisualResourceKind, readonly string[]> = {
     background: STAGE_ROOT,
     still: [...ADV_ROOT, "Still"],
@@ -374,14 +315,9 @@ const visualFile = (
     "post-effect": POST_EFFECT_ROOT,
     video: [...ADV_ROOT, "Episode"],
   };
-  const assetId = String(
-    item.assetId ?? item.videoId ?? item.assetName ?? visualKind,
-  );
+  const assetId = String(item.assetId ?? item.videoId ?? item.assetName ?? visualKind);
   let source = normalizePath(item.sourcePath);
-  let fallback = safeFilePart(
-    item.assetName ?? item.videoId ?? item.assetId,
-    assetId,
-  );
+  let fallback = safeFilePart(item.assetName ?? item.videoId ?? item.assetId, assetId);
   if (!source.length) source = [...fallbackRoots[visualKind]];
   if (visualKind === "video") {
     if (source.at(-1)?.endsWith("-Video.txt")) source = source.slice(0, -1);
@@ -389,16 +325,10 @@ const visualFile = (
     source = [...source, fallback];
   } else {
     const extension =
-      visualKind === "post-effect"
-        ? ".asset"
-        : ["effect", "frame"].includes(visualKind)
-          ? ".prefab"
-          : ".png";
+      visualKind === "post-effect" ? ".asset" : ["effect", "frame"].includes(visualKind) ? ".prefab" : ".png";
     source = withFallbackFile(source, `${fallback}${extension}`);
   }
-  const path = source.length
-    ? source
-    : [...fallbackRoots[visualKind], fallback];
+  const path = source.length ? source : [...fallbackRoots[visualKind], fallback];
   const previewUrl = visualKind === "video" ? "" : String(item.url ?? "");
   return Object.freeze({
     kind: "file",
@@ -407,15 +337,8 @@ const visualFile = (
     name: path.at(-1) || fallback,
     description: String(item.assetName ?? item.videoId ?? ""),
     meta: String(item.sourcePath ?? item.assetName ?? item.assetId ?? ""),
-    media:
-      visualKind === "video"
-        ? "video"
-        : ["effect", "post-effect"].includes(visualKind)
-          ? "effect"
-          : "image",
-    ...(previewUrl
-      ? { preview: Object.freeze({ kind: "image" as const, url: previewUrl }) }
-      : {}),
+    media: visualKind === "video" ? "video" : ["effect", "post-effect"].includes(visualKind) ? "effect" : "image",
+    ...(previewUrl ? { preview: Object.freeze({ kind: "image" as const, url: previewUrl }) } : {}),
     available: visualAvailable(item),
     insert: Object.freeze({ kind: "visual", visualKind, assetId }),
   });
@@ -423,11 +346,7 @@ const visualFile = (
 
 const resolvedSound = (value: Record<string, unknown>): boolean => {
   const status = String(record(value.resolution).status ?? "");
-  return (
-    Boolean(value.playableUrl) &&
-    value.missing !== true &&
-    (!status || status === "resolved")
-  );
+  return Boolean(value.playableUrl) && value.missing !== true && (!status || status === "resolved");
 };
 
 const audioFile = (item: AudioItem): HaneokaResourceFileNode => {
@@ -435,20 +354,14 @@ const audioFile = (item: AudioItem): HaneokaResourceFileNode => {
   const sourcePath = value.sourcePath ?? value.outputPath ?? value.runtimePath;
   let relative = normalizePath(sourcePath);
   const prefix = normalizePath("Assets/AddressableResources/Adv");
-  if (prefix.every((part, index) => relative[index] === part))
-    relative = relative.slice(prefix.length);
+  if (prefix.every((part, index) => relative[index] === part)) relative = relative.slice(prefix.length);
   if (relative.at(-1)?.includes(".")) relative = relative.slice(0, -1);
   if (String(value.source ?? "") === "songs") relative = ["songs"];
   const name = `${safeFilePart(item.label, String(value.soundId ?? item.key))} [${safeFilePart(
     value.soundId ?? value.musicId ?? item.key,
     item.key,
   )}]${mediaExtension(item.playableUrl, ".audio")}`;
-  const path = [
-    "audio",
-    item.usage === "bgm" ? "bgm" : item.usage === "se" ? "se" : "vocal",
-    ...relative,
-    name,
-  ];
+  const path = ["audio", item.usage === "bgm" ? "bgm" : item.usage === "se" ? "se" : "vocal", ...relative, name];
   const previewUrl = String(value.jacketThumbUrl ?? value.jacketUrl ?? "");
   return Object.freeze({
     kind: "file",
@@ -486,9 +399,7 @@ const mergeRecords = (
   for (const [key, value] of Object.entries(authored)) {
     if (value === undefined) continue;
     result[key] =
-      isRecord(result[key]) && isRecord(value)
-        ? mergeRecords(record(result[key]), value)
-        : structuredClone(value);
+      isRecord(result[key]) && isRecord(value) ? mergeRecords(record(result[key]), value) : structuredClone(value);
   }
   return result;
 };
@@ -510,19 +421,11 @@ const reconcileEpisodeCommands = (
   for (const [sourceIndex, command] of sourceCommands.entries()) {
     const key = sourceIndexKey(command);
     const indexedCandidate = key ? catalogByIndex.get(key) : undefined;
-    const indexed =
-      indexedCandidate?.command === command.command
-        ? indexedCandidate
-        : undefined;
+    const indexed = indexedCandidate?.command === command.command ? indexedCandidate : undefined;
     const positional = catalogCommands[sourceIndex];
-    const catalogCommand =
-      indexed ||
-      (positional?.command === command.command ? positional : undefined);
+    const catalogCommand = indexed || (positional?.command === command.command ? positional : undefined);
     if (!catalogCommand) continue;
-    const reconciled = reconcileAdvEpisodeCommandWithCatalog(
-      command,
-      catalogCommand,
-    );
+    const reconciled = reconcileAdvEpisodeCommandWithCatalog(command, catalogCommand);
     command.fields = reconciled.fields;
     command.extensions = reconciled.extensions;
   }
@@ -548,25 +451,15 @@ const canonicalStoryProject = (request: {
   } as const;
   const catalogResult = importAdvStoryJson(request.catalog, importOptions);
   const hasEpisodeSource =
-    (typeof request.sourceContent === "string" &&
-      Boolean(request.sourceContent.trim())) ||
-    (request.sourceContent !== null &&
-      typeof request.sourceContent === "object");
-  const sourceResult = hasEpisodeSource
-    ? importAdvStoryJson(request.sourceContent, importOptions)
-    : catalogResult;
+    (typeof request.sourceContent === "string" && Boolean(request.sourceContent.trim())) ||
+    (request.sourceContent !== null && typeof request.sourceContent === "object");
+  const sourceResult = hasEpisodeSource ? importAdvStoryJson(request.sourceContent, importOptions) : catalogResult;
   const project = sourceResult.project;
 
   if (sourceResult !== catalogResult) {
-    reconcileEpisodeCommands(
-      project.scenes[0]?.commands ?? [],
-      catalogResult.project.scenes[0]?.commands ?? [],
-    );
+    reconcileEpisodeCommands(project.scenes[0]?.commands ?? [], catalogResult.project.scenes[0]?.commands ?? []);
     project.assets = cloneStoryValue(catalogResult.project.assets);
-    project.runtime = mergeRecords(
-      catalogResult.project.runtime,
-      project.runtime,
-    ) as JsonObject;
+    project.runtime = mergeRecords(catalogResult.project.runtime, project.runtime) as JsonObject;
     project.storyFields = cloneStoryValue(catalogResult.project.storyFields);
   }
 
@@ -574,9 +467,7 @@ const canonicalStoryProject = (request: {
     catalog: cloneStoryValue(request.sourceCatalog) as JsonObject,
     episode: {
       path: String(request.summary.scriptAsset ?? ""),
-      content: cloneStoryValue(
-        (request.sourceContent ?? null) as JsonObject[string],
-      ),
+      content: cloneStoryValue((request.sourceContent ?? null) as JsonObject[string]),
     },
     runtime: cloneStoryValue(request.sourceRuntime) as JsonObject,
     summary: cloneStoryValue(request.summary) as JsonObject,
@@ -596,10 +487,7 @@ const canonicalStoryProject = (request: {
   });
 };
 
-const directory = (
-  path: readonly string[],
-  description?: string,
-): HaneokaResourceDirectoryNode =>
+const directory = (path: readonly string[], description?: string): HaneokaResourceDirectoryNode =>
   Object.freeze({
     kind: "directory",
     id: `haneoka:directory:${pathKey(path)}`,
@@ -608,11 +496,8 @@ const directory = (
     ...(description ? { description } : {}),
   });
 
-export const createHaneokaResourceBrowser = (
-  adapter: HaneokaResourceBrowserAdapter,
-): AltairHaneokaResourceBrowser => {
-  const localize = (value: unknown): string =>
-    adapter.localize?.(value) || String(value ?? "");
+export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdapter): AltairHaneokaResourceBrowser => {
+  const localize = (value: unknown): string => adapter.localize?.(value) || String(value ?? "");
 
   const fetchCatalog = async (
     release: string,
@@ -633,12 +518,9 @@ export const createHaneokaResourceBrowser = (
     return value;
   };
 
-  const browse = async (
-    request: HaneokaResourceBrowseRequest,
-  ): Promise<HaneokaResourceBrowseResult> => {
+  const browse = async (request: HaneokaResourceBrowseRequest): Promise<HaneokaResourceBrowseResult> => {
     const release = request.release.trim();
-    if (!release)
-      throw new TypeError("Haneoka resource browsing requires a release");
+    if (!release) throw new TypeError("Haneoka resource browsing requires a release");
     const path = normalizePath(request.path?.join("/"));
     const signal = request.signal ?? neverAborted;
     assertActive(signal);
@@ -646,9 +528,7 @@ export const createHaneokaResourceBrowser = (
     const labels = new Map<string, string>();
 
     if (pathStartsWith(path, LIVE2D_ROOT)) {
-      const models = record(
-        await fetchCatalog(release, "live2d", "collection", signal),
-      );
+      const models = record(await fetchCatalog(release, "live2d", "collection", signal));
       for (const item of Object.values(models).map(record)) {
         const key = String(item.live2dKey ?? "");
         if (!key) continue;
@@ -656,9 +536,7 @@ export const createHaneokaResourceBrowser = (
           normalizePath(item.sourcePath ?? item.mocSourcePath),
           `${safeFilePart(key, "model")}.live2d`,
         );
-        const resourcePath = relative.length
-          ? relative
-          : [...LIVE2D_ROOT, `${key}.live2d`];
+        const resourcePath = relative.length ? relative : [...LIVE2D_ROOT, `${key}.live2d`];
         const previewUrl = String(item.thumbnailImage ?? item.faceImage ?? "");
         files.push(
           Object.freeze({
@@ -666,10 +544,7 @@ export const createHaneokaResourceBrowser = (
             id: `haneoka:live2d:${encodeURIComponent(key)}`,
             path: Object.freeze(resourcePath),
             name: resourcePath.at(-1) || key,
-            description:
-              localize(item.characterName) ||
-              localize(item.title) ||
-              String(item.live2dName ?? key),
+            description: localize(item.characterName) || localize(item.title) || String(item.live2dName ?? key),
             meta: String(item.sourcePath ?? key),
             media: "live2d",
             ...(previewUrl
@@ -698,33 +573,18 @@ export const createHaneokaResourceBrowser = (
       [[...ADV_ROOT, "Still"], "still", "story-assets", "view", "stills"],
       [[...ADV_ROOT, "Frame"], "frame", "story-assets", "view", "frames"],
       [[...ADV_ROOT, "Effect"], "effect", "story-assets", "view", "effects"],
-      [
-        [...ADV_ROOT, "PostEffect"],
-        "post-effect",
-        "story-assets",
-        "view",
-        "post-effects",
-      ],
+      [[...ADV_ROOT, "PostEffect"], "post-effect", "story-assets", "view", "post-effects"],
       [POST_EFFECT_ROOT, "post-effect", "story-assets", "view", "post-effects"],
       [[...ADV_ROOT, "Episode"], "video", "story-assets", "view", "videos"],
     ];
     for (const [root, visualKind, resource, kind, view] of visualSources) {
       if (!pathStartsWith(path, root)) continue;
-      const response = await fetchCatalog(
-        release,
-        resource,
-        kind,
-        signal,
-        view,
-      );
+      const response = await fetchCatalog(release, resource, kind, signal, view);
       const values =
-        visualKind === "background" &&
-        isRecord(response) &&
-        isRecord(response.backgrounds)
+        visualKind === "background" && isRecord(response) && isRecord(response.backgrounds)
           ? Object.values(response.backgrounds)
           : Object.values(record(response));
-      for (const item of values.map(record))
-        files.push(visualFile(item, visualKind));
+      for (const item of values.map(record)) files.push(visualFile(item, visualKind));
       break;
     }
 
@@ -736,29 +596,17 @@ export const createHaneokaResourceBrowser = (
           ? "voice"
           : undefined;
     if (audioUsage) {
-      const category =
-        audioUsage === "bgm" ? "Bgm" : audioUsage === "se" ? "Se" : "Voice";
-      const view =
-        audioUsage === "bgm"
-          ? "bgms"
-          : audioUsage === "se"
-            ? "sound-effects"
-            : "voices";
+      const category = audioUsage === "bgm" ? "Bgm" : audioUsage === "se" ? "Se" : "Voice";
+      const view = audioUsage === "bgm" ? "bgms" : audioUsage === "se" ? "sound-effects" : "voices";
       const [masterValue, storyValue, songsValue] = await Promise.all([
         fetchCatalog(release, "audio/views/master-sounds", "document", signal),
         fetchCatalog(release, "story-assets", "view", signal, view),
-        audioUsage === "bgm"
-          ? fetchCatalog(release, "songs", "collection", signal)
-          : Promise.resolve({}),
+        audioUsage === "bgm" ? fetchCatalog(release, "songs", "collection", signal) : Promise.resolve({}),
       ]);
       const items: AudioItem[] = [];
       for (const [key, source] of Object.entries(record(masterValue))) {
         const value = record(source);
-        if (
-          String(value.categoryName ?? "") !== category ||
-          !resolvedSound(value)
-        )
-          continue;
+        if (String(value.categoryName ?? "") !== category || !resolvedSound(value)) continue;
         const label = String(value.cueName ?? value.soundId ?? key);
         items.push({
           key: `master:${key}`,
@@ -772,9 +620,7 @@ export const createHaneokaResourceBrowser = (
       for (const [key, source] of Object.entries(record(storyValue))) {
         const value = record(source);
         if (!value.playableUrl) continue;
-        const label = String(
-          value.cueName ?? value.assetName ?? value.soundId ?? key,
-        );
+        const label = String(value.cueName ?? value.assetName ?? value.soundId ?? key);
         items.push({
           key: `story:${key}`,
           label,
@@ -820,21 +666,13 @@ export const createHaneokaResourceBrowser = (
     }
 
     if (pathStartsWith(path, ["scene"])) {
-      const stories = record(
-        await fetchCatalog(release, "stories", "document", signal),
-      );
+      const stories = record(await fetchCatalog(release, "stories", "document", signal));
       for (const source of Object.values(record(stories.episodes))) {
         const item = record(source);
         const storyId = String(item.storyId ?? "");
         if (!storyId) continue;
-        const chapter = safeFilePart(
-          item.chapterKey ?? item.chapterId,
-          "chapter",
-        );
-        labels.set(
-          pathKey(["scene", chapter]),
-          localize(item.chapterName) || String(item.chapterKey ?? chapter),
-        );
+        const chapter = safeFilePart(item.chapterKey ?? item.chapterId, "chapter");
+        labels.set(pathKey(["scene", chapter]), localize(item.chapterName) || String(item.chapterKey ?? chapter));
         const relativeSource = normalizePath(item.scriptAsset);
         const prefix = normalizePath("Assets/AddressableResources/Adv/Episode");
         const relative = withFallbackFile(
@@ -879,21 +717,14 @@ export const createHaneokaResourceBrowser = (
     });
   };
 
-  const resolveInsert = async (
-    request: HaneokaResourceResolveRequest,
-  ): Promise<HaneokaResourceInsert | undefined> => {
+  const resolveInsert = async (request: HaneokaResourceResolveRequest): Promise<HaneokaResourceInsert | undefined> => {
     const release = request.release.trim();
     const signal = request.signal ?? neverAborted;
     assertActive(signal);
     const descriptor = request.descriptor;
     if (descriptor.kind === "live2d") {
       const value = record(
-        await fetchCatalog(
-          release,
-          `live2d/${encodeURIComponent(descriptor.key)}`,
-          "document",
-          signal,
-        ),
+        await fetchCatalog(release, `live2d/${encodeURIComponent(descriptor.key)}`, "document", signal),
       );
       return { kind: "live2d", key: descriptor.key, value };
     }
@@ -910,36 +741,18 @@ export const createHaneokaResourceBrowser = (
       const resource = view
         ? `story-assets/views/${view}/${encodeURIComponent(descriptor.assetId)}`
         : `story-assets/${encodeURIComponent(descriptor.assetId)}`;
-      const value = record(
-        await fetchCatalog(release, resource, "document", signal),
-      );
-      const key = String(
-        value.resourceRef ??
-          value.assetName ??
-          value.videoId ??
-          value.soundId ??
-          descriptor.assetId,
-      );
+      const value = record(await fetchCatalog(release, resource, "document", signal));
+      const key = String(value.resourceRef ?? value.assetName ?? value.videoId ?? value.soundId ?? descriptor.assetId);
       return { kind: descriptor.visualKind, key, value };
     }
     if (descriptor.kind === "audio") {
       const value = descriptor.detailPath
-        ? record(
-            await fetchCatalog(
-              release,
-              descriptor.detailPath,
-              "document",
-              signal,
-            ),
-          )
+        ? record(await fetchCatalog(release, descriptor.detailPath, "document", signal))
         : { ...descriptor.value };
       const cueSheet = String(value.cueSheetName ?? "").trim();
       const cue = String(value.cueName ?? "").trim();
       const key = String(
-        value.resourceRef ??
-          (cueSheet && cue ? `${cueSheet}/${cue}` : cue) ??
-          value.soundId ??
-          descriptor.key,
+        value.resourceRef ?? (cueSheet && cue ? `${cueSheet}/${cue}` : cue) ?? value.soundId ?? descriptor.key,
       );
       return {
         kind: "audio",
@@ -950,30 +763,18 @@ export const createHaneokaResourceBrowser = (
     }
 
     const detail = record(
-      await fetchCatalog(
-        release,
-        `stories/${encodeURIComponent(descriptor.storyId)}`,
-        "document",
-        signal,
-      ),
+      await fetchCatalog(release, `stories/${encodeURIComponent(descriptor.storyId)}`, "document", signal),
     );
     const assets = record(detail.assets);
     const live2dKeys = Array.isArray(assets.live2d)
-      ? assets.live2d
-          .map((entry) => String(record(entry).live2dKey ?? ""))
-          .filter(Boolean)
+      ? assets.live2d.map((entry) => String(record(entry).live2dKey ?? "")).filter(Boolean)
       : [];
     const scriptAsset = String(descriptor.summary.scriptAsset ?? "");
     const [runtimeValue, live2d, sourceContent] = await Promise.all([
       fetchCatalog(release, "story-runtime", "document", signal),
       Promise.all(
         [...new Set(live2dKeys)].map((key) =>
-          fetchCatalog(
-            release,
-            `live2d/${encodeURIComponent(key)}`,
-            "document",
-            signal,
-          ),
+          fetchCatalog(release, `live2d/${encodeURIComponent(key)}`, "document", signal),
         ),
       ),
       scriptAsset && adapter.fetchAsset
@@ -991,9 +792,7 @@ export const createHaneokaResourceBrowser = (
     const canonical = canonicalStoryProject({
       release,
       storyId: descriptor.storyId,
-      title:
-        localize(descriptor.summary.title) ||
-        String(descriptor.summary.storyKey ?? descriptor.storyId),
+      title: localize(descriptor.summary.title) || String(descriptor.summary.storyKey ?? descriptor.storyId),
       summary: { ...descriptor.summary },
       catalog: value,
       sourceCatalog: detail,
@@ -1009,11 +808,7 @@ export const createHaneokaResourceBrowser = (
   };
 
   return Object.freeze({
-    roots: Object.freeze([
-      directory(["Assets"]),
-      directory(["audio"]),
-      directory(["scene"]),
-    ]),
+    roots: Object.freeze([directory(["Assets"]), directory(["audio"]), directory(["scene"])]),
     preferredPath({
       preferredKind,
       preferredAudioUsage,
@@ -1029,14 +824,7 @@ export const createHaneokaResourceBrowser = (
       if (preferredKind === "post-effect") return ADV_ROOT;
       if (preferredKind === "video") return [...ADV_ROOT, "Episode"];
       if (preferredKind === "audio") {
-        return [
-          "audio",
-          preferredAudioUsage === "voice"
-            ? "vocal"
-            : preferredAudioUsage === "se"
-              ? "se"
-              : "bgm",
-        ];
+        return ["audio", preferredAudioUsage === "voice" ? "vocal" : preferredAudioUsage === "se" ? "se" : "bgm"];
       }
       return [];
     },
@@ -1057,9 +845,7 @@ const providerContext = (
 } => {
   const context = request.context ?? {};
   const release = resolveHaneokaRelease({
-    release:
-      nonEmptyString(context.release) ??
-      nonEmptyString(context.releaseServer),
+    release: nonEmptyString(context.release) ?? nonEmptyString(context.releaseServer),
     locale: context.locale,
     defaultRelease: options.defaultRelease,
   });
@@ -1068,14 +854,11 @@ const providerContext = (
       "Haneoka resource provider requires an explicit release, a supported locale, or defaultRelease",
     );
   const usage = context.audioUsage ?? context.preferredAudioUsage;
-  const preferredAudioUsage =
-    usage === "bgm" || usage === "se" || usage === "voice" ? usage : undefined;
+  const preferredAudioUsage = usage === "bgm" || usage === "se" || usage === "voice" ? usage : undefined;
   return { release, ...(preferredAudioUsage ? { preferredAudioUsage } : {}) };
 };
 
-const providerDirectory = (
-  node: HaneokaResourceDirectoryNode,
-): ResourceBrowserDirectory =>
+const providerDirectory = (node: HaneokaResourceDirectoryNode): ResourceBrowserDirectory =>
   Object.freeze({
     type: "directory",
     id: node.id,
@@ -1084,9 +867,7 @@ const providerDirectory = (
     ...(node.description ? { description: node.description } : {}),
   });
 
-const providerFile = (
-  node: HaneokaResourceFileNode,
-): ResourceBrowserFile<HaneokaResourceReference> => {
+const providerFile = (node: HaneokaResourceFileNode): ResourceBrowserFile<HaneokaResourceReference> => {
   const acceptedKinds =
     node.insert.kind === "visual"
       ? [node.insert.visualKind]
@@ -1126,10 +907,7 @@ const providerFile = (
 export const createHaneokaResourceBrowserProvider = (
   adapter: HaneokaResourceBrowserAdapter,
   options: HaneokaResourceBrowserProviderOptions = {},
-): ResourceBrowserProvider<
-  HaneokaResourceReference,
-  unknown
-> => {
+): ResourceBrowserProvider<HaneokaResourceReference, unknown> => {
   const browser = createHaneokaResourceBrowser(adapter);
   const roots = browser.roots.map(providerDirectory);
   return Object.freeze({
@@ -1141,13 +919,10 @@ export const createHaneokaResourceBrowserProvider = (
       return browser.preferredPath({
         ...(request.preferredKind
           ? {
-              preferredKind:
-                request.preferredKind as HaneokaPreferredResourceKind,
+              preferredKind: request.preferredKind as HaneokaPreferredResourceKind,
             }
           : {}),
-        ...(context.preferredAudioUsage
-          ? { preferredAudioUsage: context.preferredAudioUsage }
-          : {}),
+        ...(context.preferredAudioUsage ? { preferredAudioUsage: context.preferredAudioUsage } : {}),
       });
     },
     async list(path: ResourceBrowserPath, request: ResourceBrowserRequest) {
@@ -1157,27 +932,17 @@ export const createHaneokaResourceBrowserProvider = (
         path,
         ...(request.preferredKind
           ? {
-              preferredKind:
-                request.preferredKind as HaneokaPreferredResourceKind,
+              preferredKind: request.preferredKind as HaneokaPreferredResourceKind,
             }
           : {}),
-        ...(context.preferredAudioUsage
-          ? { preferredAudioUsage: context.preferredAudioUsage }
-          : {}),
+        ...(context.preferredAudioUsage ? { preferredAudioUsage: context.preferredAudioUsage } : {}),
         ...(request.signal ? { signal: request.signal } : {}),
       });
       return Object.freeze(
-        result.nodes.map((node) =>
-          node.kind === "directory"
-            ? providerDirectory(node)
-            : providerFile(node),
-        ),
+        result.nodes.map((node) => (node.kind === "directory" ? providerDirectory(node) : providerFile(node))),
       );
     },
-    async open(
-      file: ResourceBrowserFile<HaneokaResourceReference>,
-      request: ResourceBrowserRequest,
-    ) {
+    async open(file: ResourceBrowserFile<HaneokaResourceReference>, request: ResourceBrowserRequest) {
       const context = providerContext(request, options);
       const result = await browser.resolveInsert({
         release: context.release,
