@@ -153,13 +153,15 @@ export interface HaneokaResourceBrowserProviderOptions {
 }
 
 /**
- * Locale mappings only name Haneoka releases that actually exist. The current
- * archive has one Japanese release; other languages must use an explicit
- * release or the provider's configured default.
+ * Japanese reads the Japanese release; the global release carries English,
+ * Chinese and Korean text.
  */
 export const HANEOKA_RELEASE_BY_LANGUAGE: Readonly<Record<string, string>> = Object.freeze({
-  ja: "jp-cbt",
-  jp: "jp-cbt",
+  ja: "jp",
+  jp: "jp",
+  en: "intl",
+  zh: "intl",
+  ko: "intl",
 });
 
 const nonEmptyString = (value: unknown): string | undefined => {
