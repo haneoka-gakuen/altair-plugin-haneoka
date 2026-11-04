@@ -67,6 +67,7 @@ export interface HaneokaResourceFileNode extends HaneokaResourceNodeBase {
   readonly media: HaneokaResourceMediaKind;
   readonly preview?: HaneokaResourcePreview;
   readonly audioPreviewUrl?: string;
+  readonly presentation?: ResourceBrowserFile["presentation"];
   readonly available: boolean;
   readonly insert: HaneokaResourceInsertDescriptor;
 }
@@ -536,6 +537,27 @@ const directory = (path: readonly string[], description?: string): HaneokaResour
     ...(description ? { description } : {}),
   });
 
+const modelPresentation = (item: Record<string, unknown>): Readonly<Record<string, unknown>> =>
+  Object.freeze(
+    Object.fromEntries(
+      [
+        "title",
+        "live2dName",
+        "characterName",
+        "characterKey",
+        "live2dKey",
+        "faceImage",
+        "preview",
+        "family",
+        "spineVersion",
+        "sourcePathKey",
+        "id",
+      ]
+        .filter((key) => item[key] !== undefined)
+        .map((key) => [key, item[key]]),
+    ),
+  );
+
 export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdapter): AltairHaneokaResourceBrowser => {
   const localize = (value: unknown): string => adapter.localize?.(value) || String(value ?? "");
 
@@ -573,7 +595,8 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
         const key = String(item.live2dKey ?? "");
         if (!key) continue;
         const resourcePath = [...LIVE2D_ROOT, `${safeFilePart(key, "model")}.live2d`];
-        const previewUrl = String(item.thumbnailImage ?? item.faceImage ?? "");
+        const preview = record(item.preview);
+        const previewUrl = String(preview.image ?? preview.runtime ?? "");
         files.push(
           Object.freeze({
             kind: "file",
@@ -583,6 +606,7 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
             description: localize(item.characterName) || localize(item.title) || String(item.live2dName ?? key),
             meta: String(item.sourcePath ?? key),
             media: "live2d",
+            presentation: { kind: "live2d" as const, data: modelPresentation(item) },
             ...(previewUrl
               ? {
                   preview: Object.freeze({
@@ -615,6 +639,7 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
             description: localize(item.title) || key,
             meta: String(item.sourcePathKey ?? key),
             media: "spine",
+            presentation: { kind: "spine" as const, data: modelPresentation(item) },
             available: record(item.runtimeSummary).status === "ready",
             ...(previewUrl ? { preview: Object.freeze({ kind: "image" as const, url: previewUrl }) } : {}),
             insert: Object.freeze({ kind: "spine", key }),
@@ -990,6 +1015,7 @@ const providerFile = (node: HaneokaResourceFileNode): ResourceBrowserFile<Haneok
     displayKind,
     ...(node.preview?.kind === "image" ? { previewUrl: node.preview.url } : {}),
     ...(node.audioPreviewUrl ? { audioPreviewUrl: node.audioPreviewUrl } : {}),
+    ...(node.presentation ? { presentation: node.presentation } : {}),
     acceptedKinds: Object.freeze(acceptedKinds),
     available: node.available,
     reference: node.insert,
