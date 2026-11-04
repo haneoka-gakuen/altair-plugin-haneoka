@@ -101,6 +101,11 @@ one exists. Inserting resolves the node into one of:
 - a whole project, when the node is a story — returned with its import
   diagnostics.
 
+Story projects include the shared Our Notes stage calibration from
+`@haneoka/vega-plugin-haneoka/scene-profile`. Explicit source stage values override
+that baseline, so editor preview, community reading and standalone exports use
+the same geometry without a host-specific default.
+
 The same browser is available without Altair's plugin host through
 `createHaneokaResourceBrowser(adapter)`, with `browse`, `list`,
 `preferredPath` and `resolveInsert`.

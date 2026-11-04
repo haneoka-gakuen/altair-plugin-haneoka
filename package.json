@@ -36,7 +36,17 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./public-resource-url": {
+      "types": "./dist/public-resource-url.d.ts",
+      "import": "./dist/public-resource-url.js",
+      "default": "./dist/public-resource-url.js"
+    },
+    "./openotes": {
+      "types": "./dist/openotes.d.ts",
+      "import": "./dist/openotes.js",
+      "default": "./dist/openotes.js"
+    }
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
@@ -50,15 +60,19 @@
   },
   "peerDependencies": {
     "@haneoka/altair": "^0.1.0",
-    "@haneoka/altair-plugin-adv": "^0.1.0"
+    "@haneoka/altair-plugin-adv": "^0.1.0",
+    "@haneoka/vega-plugin-haneoka": "^0.1.0",
+    "@haneoka/vega-protocol": "^0.1.0"
   },
   "devDependencies": {
     "@haneoka/altair": "workspace:*",
     "@haneoka/altair-plugin-adv": "workspace:*",
+    "@haneoka/vega-plugin-haneoka": "workspace:*",
     "@types/node": "^26.1.0",
     "typescript": "^6.0.3",
     "vite": "^7.3.6",
-    "prettier": "3.7.4"
+    "prettier": "3.7.4",
+    "@haneoka/vega-protocol": "workspace:*"
   },
   "engines": {
     "node": ">=20"
