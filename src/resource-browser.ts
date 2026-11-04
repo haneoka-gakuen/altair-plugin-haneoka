@@ -7,6 +7,7 @@ import type {
   ResourceBrowserRequest,
 } from "@haneoka/altair/resource-browser";
 import { cloneStoryValue, type JsonObject, type StoryProject, type StoryProjectCommand } from "@haneoka/altair/model";
+import { HANEOKA_STAGE_GEOMETRY } from "@haneoka/vega-plugin-haneoka/scene-profile";
 import {
   assertValidStoryProject,
   importAdvStoryJson,
@@ -16,7 +17,7 @@ import {
 
 export type HaneokaVisualResourceKind = "background" | "still" | "frame" | "effect" | "post-effect" | "video";
 export type HaneokaAudioUsage = "bgm" | "se" | "voice";
-export type HaneokaPreferredResourceKind = HaneokaVisualResourceKind | "live2d" | "audio";
+export type HaneokaPreferredResourceKind = HaneokaVisualResourceKind | "live2d" | "spine" | "audio" | "project";
 
 export interface HaneokaCatalogRequest {
   readonly release: string;
@@ -42,7 +43,7 @@ export interface HaneokaResourceBrowserAdapter {
   readonly localize?: (value: unknown) => string;
 }
 
-export type HaneokaResourceMediaKind = "image" | "audio" | "video" | "data" | "live2d" | "story" | "effect";
+export type HaneokaResourceMediaKind = "image" | "audio" | "video" | "data" | "live2d" | "spine" | "story" | "effect";
 
 export interface HaneokaResourcePreview {
   readonly kind: "image" | "audio" | "video";
@@ -74,6 +75,7 @@ export type HaneokaResourceNode = HaneokaResourceDirectoryNode | HaneokaResource
 
 export type HaneokaResourceInsertDescriptor =
   | { readonly kind: "live2d"; readonly key: string }
+  | { readonly kind: "spine"; readonly key: string }
   | {
       readonly kind: "visual";
       readonly visualKind: HaneokaVisualResourceKind;
@@ -94,7 +96,7 @@ export type HaneokaResourceInsertDescriptor =
 
 export type HaneokaResourceInsert =
   | {
-      readonly kind: "live2d";
+      readonly kind: "live2d" | "spine";
       readonly key: string;
       readonly value: Record<string, unknown>;
     }
@@ -122,6 +124,7 @@ export interface HaneokaResourceBrowseRequest {
   readonly preferredKind?: HaneokaPreferredResourceKind;
   readonly preferredAudioUsage?: HaneokaAudioUsage;
   readonly signal?: AbortSignal;
+  readonly recursive?: boolean;
 }
 
 export interface HaneokaResourceBrowseResult {
@@ -202,6 +205,7 @@ const ADV_ROOT = ["Assets", "AddressableResources", "Adv"] as const;
 const STAGE_ROOT = [...ADV_ROOT, "Stage"] as const;
 const POST_EFFECT_ROOT = [...STAGE_ROOT, "_settings", "posteffect"] as const;
 const LIVE2D_ROOT = ["Assets", "AddressableResources", "Character", "Live2D"] as const;
+const SPINE_ROOT = ["Assets", "AddressableResources", "Character", "Spine"] as const;
 const STATIC_PATHS: readonly (readonly string[])[] = Object.freeze([
   ["Assets"],
   ["audio"],
@@ -218,6 +222,7 @@ const STATIC_PATHS: readonly (readonly string[])[] = Object.freeze([
   [...ADV_ROOT, "Stage", "_settings"],
   [...POST_EFFECT_ROOT],
   [...LIVE2D_ROOT],
+  [...SPINE_ROOT],
   ["audio", "bgm"],
   ["audio", "se"],
   ["audio", "vocal"],
@@ -433,6 +438,35 @@ const reconcileEpisodeCommands = (
   }
 };
 
+const portableCubism = (value: Record<string, unknown>): Record<string, unknown> => {
+  const { textureVariants: _variants, ...runtime } = record(value.runtime);
+  const clips = (entries: unknown) =>
+    (Array.isArray(entries) ? entries : []).map((entry) => {
+      const row = record(entry);
+      return {
+        name: row.name,
+        url: row.runtime ?? row.url,
+        ...Object.fromEntries(
+          ["fadeInTime", "fadeOutTime"].filter((key) => row[key] !== undefined).map((key) => [key, row[key]]),
+        ),
+      };
+    });
+  const { preview: _preview, previewInputSha256: _previewHash, ...model } = value;
+  return {
+    ...model,
+    sourceMetadata: value,
+    runtime,
+    motions: clips(value.motions),
+    expressions: clips(value.expressions),
+  };
+};
+const portableSound = (value: unknown): Record<string, unknown> => {
+  const source = record(value);
+  if (typeof source.playableUrl !== "string" || !source.playableUrl) return source;
+  const { runtimePath: _runtimePath, resolution: _resolution, ...playable } = source;
+  return { ...playable, url: source.playableUrl, sourceMetadata: source };
+};
+
 const canonicalStoryProject = (request: {
   readonly release: string;
   readonly storyId: string;
@@ -464,6 +498,10 @@ const canonicalStoryProject = (request: {
     project.runtime = mergeRecords(catalogResult.project.runtime, project.runtime) as JsonObject;
     project.storyFields = cloneStoryValue(catalogResult.project.storyFields);
   }
+  project.runtime.stage = {
+    ...cloneStoryValue(HANEOKA_STAGE_GEOMETRY as unknown as JsonObject),
+    ...(record(project.runtime.stage) as JsonObject),
+  };
 
   const sourceSnapshot: JsonObject = {
     catalog: cloneStoryValue(request.sourceCatalog) as JsonObject,
@@ -534,11 +572,7 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
       for (const item of Object.values(models).map(record)) {
         const key = String(item.live2dKey ?? "");
         if (!key) continue;
-        const relative = withFallbackFile(
-          normalizePath(item.sourcePath ?? item.mocSourcePath),
-          `${safeFilePart(key, "model")}.live2d`,
-        );
-        const resourcePath = relative.length ? relative : [...LIVE2D_ROOT, `${key}.live2d`];
+        const resourcePath = [...LIVE2D_ROOT, `${safeFilePart(key, "model")}.live2d`];
         const previewUrl = String(item.thumbnailImage ?? item.faceImage ?? "");
         files.push(
           Object.freeze({
@@ -564,6 +598,30 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
       }
     }
 
+    if (pathStartsWith(path, SPINE_ROOT)) {
+      const catalog = record(await fetchCatalog(release, "spine", "collection", signal));
+      for (const item of Object.values(record(catalog.models)).map(record)) {
+        const key = String(item.id ?? "");
+        if (!key) continue;
+        const preview = record(item.preview),
+          previewUrl = String(preview.url ?? "");
+        const resourcePath = [...SPINE_ROOT, `${safeFilePart(key, "model")}.spine`];
+        files.push(
+          Object.freeze({
+            kind: "file",
+            id: `haneoka:spine:${encodeURIComponent(key)}`,
+            path: Object.freeze(resourcePath),
+            name: resourcePath.at(-1) || key,
+            description: localize(item.title) || key,
+            meta: String(item.sourcePathKey ?? key),
+            media: "spine",
+            available: record(item.runtimeSummary).status === "ready",
+            ...(previewUrl ? { preview: Object.freeze({ kind: "image" as const, url: previewUrl }) } : {}),
+            insert: Object.freeze({ kind: "spine", key }),
+          }),
+        );
+      }
+    }
     const visualSources: readonly [
       readonly string[],
       HaneokaVisualResourceKind,
@@ -571,12 +629,12 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
       "document" | "view",
       string?,
     ][] = [
-      [STAGE_ROOT, "background", "story-assets", "document"],
+      [POST_EFFECT_ROOT, "post-effect", "story-assets", "view", "post-effects"],
+      [STAGE_ROOT, "background", "story-assets", "view", "backgrounds"],
       [[...ADV_ROOT, "Still"], "still", "story-assets", "view", "stills"],
       [[...ADV_ROOT, "Frame"], "frame", "story-assets", "view", "frames"],
       [[...ADV_ROOT, "Effect"], "effect", "story-assets", "view", "effects"],
       [[...ADV_ROOT, "PostEffect"], "post-effect", "story-assets", "view", "post-effects"],
-      [POST_EFFECT_ROOT, "post-effect", "story-assets", "view", "post-effects"],
       [[...ADV_ROOT, "Episode"], "video", "story-assets", "view", "videos"],
     ];
     for (const [root, visualKind, resource, kind, view] of visualSources) {
@@ -715,7 +773,7 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
 
     return Object.freeze({
       path: Object.freeze(path),
-      nodes: immediateChildren(path, files, labels),
+      nodes: request.recursive ? Object.freeze(files) : immediateChildren(path, files, labels),
     });
   };
 
@@ -724,15 +782,45 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
     const signal = request.signal ?? neverAborted;
     assertActive(signal);
     const descriptor = request.descriptor;
-    if (descriptor.kind === "live2d") {
+    if (descriptor.kind === "live2d" || descriptor.kind === "spine") {
       const value = record(
-        await fetchCatalog(release, `live2d/${encodeURIComponent(descriptor.key)}`, "document", signal),
+        await fetchCatalog(release, `${descriptor.kind}/${encodeURIComponent(descriptor.key)}`, "document", signal),
       );
-      return { kind: "live2d", key: descriptor.key, value };
+      if (descriptor.kind === "spine") {
+        const runtime = record(value.runtime),
+          skeleton = String(record(runtime.json).url ?? ""),
+          atlas = String(record(runtime.atlas).url ?? "");
+        const textures = (Array.isArray(value.atlases) ? value.atlases : []).flatMap((atlas) => {
+          const pages = record(atlas).pages;
+          return Array.isArray(pages) ? pages : [];
+        });
+        return {
+          kind: "spine",
+          key: descriptor.key,
+          value: {
+            resourceRef: descriptor.key,
+            sourceMetadata: value,
+            profile: { placement: { anchor: "stage", fit: "contain", align: [0.5, 1] } },
+            runtime: {
+              ...runtime,
+              format: "spine",
+              skeleton,
+              atlas,
+              textures: textures.map((texture) => String(record(texture).url)),
+              ...(runtime.format === "binary" ? { skel: skeleton } : { json: skeleton }),
+            },
+          },
+        };
+      }
+      return {
+        kind: descriptor.kind,
+        key: descriptor.key,
+        value: { ...portableCubism(value), resourceRef: descriptor.key },
+      };
     }
     if (descriptor.kind === "visual") {
       const views: Record<HaneokaVisualResourceKind, string> = {
-        background: "",
+        background: "backgrounds",
         still: "stills",
         frame: "frames",
         effect: "effects",
@@ -788,7 +876,11 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
       ...detail,
       title: descriptor.summary.title,
       storyId: descriptor.storyId,
-      assets: { ...assets, live2d },
+      assets: {
+        ...assets,
+        live2d: live2d.map((value) => portableCubism(record(value))),
+        ...(Array.isArray(assets.sounds) ? { sounds: assets.sounds.map(portableSound) } : {}),
+      },
       runtime,
     };
     const canonical = canonicalStoryProject({
@@ -819,11 +911,13 @@ export const createHaneokaResourceBrowser = (adapter: HaneokaResourceBrowserAdap
       readonly preferredAudioUsage?: HaneokaAudioUsage;
     }) {
       if (preferredKind === "live2d") return LIVE2D_ROOT;
+      if (preferredKind === "project") return ["scene"];
+      if (preferredKind === "spine") return SPINE_ROOT;
       if (preferredKind === "background") return STAGE_ROOT;
       if (preferredKind === "still") return [...ADV_ROOT, "Still"];
       if (preferredKind === "frame") return [...ADV_ROOT, "Frame"];
       if (preferredKind === "effect") return [...ADV_ROOT, "Effect"];
-      if (preferredKind === "post-effect") return ADV_ROOT;
+      if (preferredKind === "post-effect") return POST_EFFECT_ROOT;
       if (preferredKind === "video") return [...ADV_ROOT, "Episode"];
       if (preferredKind === "audio") {
         return ["audio", preferredAudioUsage === "voice" ? "vocal" : preferredAudioUsage === "se" ? "se" : "bgm"];
@@ -879,7 +973,7 @@ const providerFile = (node: HaneokaResourceFileNode): ResourceBrowserFile<Haneok
           ? ["project"]
           : [node.insert.kind];
   const displayKind =
-    node.media === "live2d"
+    node.media === "live2d" || node.media === "spine"
       ? "model"
       : node.media === "story"
         ? "scene"
@@ -932,6 +1026,7 @@ export const createHaneokaResourceBrowserProvider = (
       const result = await browser.browse({
         release: context.release,
         path,
+        recursive: request.context?.catalogView === "grid",
         ...(request.preferredKind
           ? {
               preferredKind: request.preferredKind as HaneokaPreferredResourceKind,
