@@ -1,9 +1,10 @@
 packages:
-  - "."
-  - ".dependencies/altair"
-  - ".dependencies/altair-plugin-adv"
-  - ".dependencies/vega"
-  - ".dependencies/vega/packages/protocol"
+  - .
+  - .dependencies/altair
+  - .dependencies/altair-plugin-adv
+  - .dependencies/vega
+  - .dependencies/vega/packages/protocol
+  - .dependencies/vega-plugin-haneoka
 
 linkWorkspacePackages: true
 

@@ -24,18 +24,21 @@ jobs:
           repository: haneoka-gakuen/altair
           path: altair-plugin-haneoka/.dependencies/altair
           persist-credentials: false
+          ref: cd4e44d0670df22fe2e8f8ae3ebab3ab8365766d
       - name: Check out Altair ADV plugin
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: haneoka-gakuen/altair-plugin-adv
           path: altair-plugin-haneoka/.dependencies/altair-plugin-adv
           persist-credentials: false
+          ref: bfc4061296dfa589b6b8d586a369b3ff445c340d
       - name: Check out Vega
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: haneoka-gakuen/vega
           path: altair-plugin-haneoka/.dependencies/vega
           persist-credentials: false
+          ref: 2fa1b39c1176852db38a45b453c737e8e3439f5d
       - name: Set up pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
@@ -51,6 +54,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: node scripts/verify-release-tag.mjs
+      - name: Check out vega-plugin-haneoka
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: haneoka-gakuen/vega-plugin-haneoka
+          ref: d02da4c16eee7413dbc07ade34ac288d05926456
+          path: altair-plugin-haneoka/.dependencies/vega-plugin-haneoka
+          persist-credentials: false
       - name: Install dependencies
         working-directory: altair-plugin-haneoka
         run: pnpm install --no-frozen-lockfile
@@ -60,6 +70,9 @@ jobs:
           pnpm --filter @haneoka/vega-protocol build
           pnpm --filter @haneoka/altair build:core
           pnpm --filter @haneoka/altair-plugin-adv build
+      - name: Build additional pinned SDK dependencies
+        working-directory: altair-plugin-haneoka
+        run: pnpm --filter @haneoka/vega-plugin-haneoka build
       - name: Check package
         working-directory: altair-plugin-haneoka
         run: pnpm check
