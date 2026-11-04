@@ -61,6 +61,8 @@ jobs:
           ref: d02da4c16eee7413dbc07ade34ac288d05926456
           path: altair-plugin-haneoka/.dependencies/vega-plugin-haneoka
           persist-credentials: false
+      - name: Set up locked Vega Rust and WASM tools
+        uses: ./altair-plugin-haneoka/.dependencies/vega/.github/actions/setup-wasm
       - name: Install dependencies
         working-directory: altair-plugin-haneoka
         run: pnpm install --no-frozen-lockfile
@@ -70,6 +72,9 @@ jobs:
           pnpm --filter @haneoka/vega-protocol build
           pnpm --filter @haneoka/altair build:core
           pnpm --filter @haneoka/altair-plugin-adv build
+      - name: Build Vega runtime for the pinned provider
+        working-directory: altair-plugin-haneoka
+        run: pnpm --filter @haneoka/vega build:core
       - name: Build additional pinned SDK dependencies
         working-directory: altair-plugin-haneoka
         run: pnpm --filter @haneoka/vega-plugin-haneoka build
